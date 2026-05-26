@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EV Charging — Cost & Reimbursement</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg:#eef1f6; --card:#ffffff; --ink:#16203a; --muted:#64748b;
+    --line:#e6eaf1; --accent:#2563eb; --good:#10b981; --office:#94a3b8;
+    --grid:rgba(15,30,60,.07);
+    --shadow:0 1px 2px rgba(20,30,60,.06),0 6px 22px rgba(20,30,60,.07);
+  }
+  [data-theme="dark"] {
+    --bg:#0d1220; --card:#161d2e; --ink:#e8edf6; --muted:#94a3b8;
+    --line:#283246; --accent:#60a5fa; --good:#34d399; --office:#64748b;
+    --grid:rgba(255,255,255,.08);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 22px rgba(0,0,0,.35);
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:1120px; margin:0 auto; padding:30px 22px 64px; }
+  header { display:flex; flex-wrap:wrap; align-items:flex-end;
+    justify-content:space-between; gap:12px; margin-bottom:8px; }
+  h1 { font-size:27px; margin:0; letter-spacing:-.4px; }
+  .sub { color:var(--muted); font-size:14px; margin:4px 0 0; }
+  .toggle { border:1px solid var(--line); background:var(--card); color:var(--ink);
+    border-radius:999px; padding:8px 15px; cursor:pointer; font-size:13px;
+    box-shadow:var(--shadow); }
+  .controls { display:flex; align-items:center; gap:10px; margin:20px 0 6px; flex-wrap:wrap; }
+  .controls label { color:var(--muted); font-size:13px; font-weight:600;
+    text-transform:uppercase; letter-spacing:.5px; }
+  select { background:var(--card); color:var(--ink); border:1px solid var(--line);
+    border-radius:10px; padding:8px 14px; font-size:14px; font-weight:600;
+    box-shadow:var(--shadow); cursor:pointer; }
+  .kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin:14px 0 24px; }
+  .kpi { background:var(--card); border-radius:16px; padding:18px 20px;
+    box-shadow:var(--shadow); border:1px solid var(--line); }
+  .kpi-label { color:var(--muted); font-size:11.5px; text-transform:uppercase;
+    letter-spacing:.7px; font-weight:600; }
+  .kpi-val { font-size:30px; font-weight:750; margin-top:8px; letter-spacing:-.5px; line-height:1.05; }
+  .kpi-unit { font-size:15px; font-weight:600; color:var(--muted); margin-left:3px; }
+  .kpi-sub { display:block; font-size:13px; font-weight:500; color:var(--muted); margin-top:4px; }
+  .card { background:var(--card); border-radius:16px; padding:22px 24px;
+    box-shadow:var(--shadow); border:1px solid var(--line); margin-bottom:20px; }
+  .card h2 { font-size:16.5px; margin:0 0 3px; letter-spacing:-.2px; }
+  .card .note { color:var(--muted); font-size:13px; margin:0 0 18px; }
+  .scope-chip { color:var(--accent); font-weight:700; }
+  .chart-box { position:relative; width:100%; }
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  table { width:100%; border-collapse:collapse; font-size:13.5px; }
+  th, td { text-align:left; padding:10px 10px; border-bottom:1px solid var(--line); }
+  th { color:var(--muted); font-size:11.5px; text-transform:uppercase;
+    letter-spacing:.5px; cursor:pointer; user-select:none; white-space:nowrap; }
+  th:hover { color:var(--ink); }
+  td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; }
+  tr.total td { font-weight:750; border-top:2px solid var(--line); }
+  .pill { font-size:11.5px; padding:2px 9px; border-radius:999px; font-weight:600; }
+  .pill-yes { background:rgba(16,185,129,.16); color:#047857; }
+  .pill-no { background:rgba(148,163,184,.2); color:#475569; }
+  [data-theme="dark"] .pill-yes { color:#34d399; }
+  [data-theme="dark"] .pill-no { color:#94a3b8; }
+  .table-scroll { overflow-x:auto; }
+  footer { color:var(--muted); font-size:12.5px; margin-top:26px; line-height:1.7; }
+  footer code { background:var(--line); padding:1px 6px; border-radius:5px; }
+  @media (max-width:760px) { .kpis { grid-template-columns:repeat(2,1fr); } .row2 { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>EV Charging — Cost &amp; Reimbursement</h1>
+      <p class="sub">May 2026 &nbsp;·&nbsp; kWh charged and estimated electricity cost by location</p>
+    </div>
+    <button class="toggle" onclick="toggleTheme()">◐ Theme</button>
+  </header>
+
+  <div class="card">
+    <h2>Monthly reimbursement</h2>
+    <p class="note">Estimated electricity to reimburse each month, stacked by employee (Office excluded).</p>
+    <div class="chart-box" style="height:320px"><canvas id="chartMonthly"></canvas></div>
+    <div class="table-scroll" style="margin-top:18px">
+    <table id="monthly">
+      <thead><tr><th>Month</th><th class="num">kWh</th><th class="num">Total cost</th><th class="num">To reimburse</th></tr></thead>
+      <tbody id="monthlyTable"></tbody>
+    </table>
+    </div>
+  </div>
+
+  <div class="controls">
+    <label for="monthSelect">Showing</label>
+    <select id="monthSelect"></select>
+  </div>
+  <p class="note" style="margin:0 0 4px;font-size:13px">
+    KPIs and charts below reflect: <span class="scope-chip" id="scopeLabel"></span></p>
+
+  <div class="kpis">
+    <div class="kpi"><div class="kpi-label">Total energy</div>
+      <div class="kpi-val" id="kpiKwh">—</div></div>
+    <div class="kpi"><div class="kpi-label">Total cost</div>
+      <div class="kpi-val" id="kpiCost">—</div></div>
+    <div class="kpi"><div class="kpi-label">To reimburse</div>
+      <div class="kpi-val" id="kpiReimb" style="color:var(--good)">—</div></div>
+    <div class="kpi"><div class="kpi-label">Charging sessions</div>
+      <div class="kpi-val" id="kpiSessions">—</div></div>
+  </div>
+
+  <div class="card">
+    <h2>Reimbursement by employee <span class="scope-chip" id="scopeLabel2"></span></h2>
+    <p class="note">Estimated electricity cost owed to each employee (Office not shown — company-paid).</p>
+    <div class="chart-box" id="empBox" style="height:300px"><canvas id="chartEmp"></canvas></div>
+  </div>
+
+  <div class="row2">
+    <div class="card">
+      <h2>Energy by location</h2>
+      <p class="note">kWh charged at each location (includes Office).</p>
+      <div class="chart-box" style="height:300px"><canvas id="chartKwh"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>Cost share</h2>
+      <p class="note">Each location's portion of total estimated cost.</p>
+      <div class="chart-box" style="height:300px"><canvas id="chartShare"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Reimbursement detail <span class="scope-chip" id="scopeLabel3"></span></h2>
+    <p class="note">Click a column to sort. "To reimburse" = kWh × rate for non-Office locations.</p>
+    <div class="table-scroll">
+    <table id="detail">
+      <thead><tr>
+        <th>Employee / site</th><th class="num">Sessions</th>
+        <th class="num">Charge time</th><th class="num">kWh</th>
+        <th class="num">Rate</th><th class="num">Cost</th><th>Reimburse</th>
+      </tr></thead>
+      <tbody id="detailBody"></tbody>
+    </table>
+    </div>
+  </div>
+
+  <footer>
+    Generated May 26, 2026 01:11 PM from 1 monthly report.<br>
+    Cost is an estimate: kWh × electricity rate (default $0.15/kWh,
+    editable per location in the build script). Office charging is shown in
+    totals but excluded from reimbursement. Each monthly report's period is taken
+    from its file name.
+  </footer>
+</div>
+<script>
+const DATA = {"rows": [{"name": "Public \u2014 Kimball Junction", "sessions": 2, "kwh": 97.19, "minutes": 42, "rate": 0.15, "cost": 14.58, "reimburse": false, "status": "Receipt (public)", "mon": "2026-05"}, {"name": "Public \u2014 Park City", "sessions": 2, "kwh": 136.27, "minutes": 64, "rate": 0.15, "cost": 20.44, "reimburse": false, "status": "Receipt (public)", "mon": "2026-05"}, {"name": "Glenn", "sessions": 4, "kwh": 130.97, "minutes": 1273, "rate": 0.15, "cost": 19.65, "reimburse": true, "status": "Reimburse", "mon": "2026-05"}, {"name": "Office (company-paid)", "sessions": 17, "kwh": 627.21, "minutes": 1364, "rate": 0.15, "cost": 94.08, "reimburse": false, "status": "Company-paid", "mon": "2026-05"}, {"name": "Todd H.", "sessions": 22, "kwh": 399.53, "minutes": 114, "rate": 0.15, "cost": 59.93, "reimburse": true, "status": "Reimburse", "mon": "2026-05"}], "employees": ["Todd H.", "Glenn"], "months": ["2026-05"], "monthLabels": {"2026-05": "May 2026"}};
+const PALETTE = ['#2563eb','#f59e0b','#10b981','#ef4444','#8b5cf6','#ec4899',
+                 '#14b8a6','#f97316','#6366f1','#84cc16','#0ea5e9','#d946ef'];
+
+function byId(id){ return document.getElementById(id); }
+function cssVar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+function r1(x){ return Math.round(x*10)/10; }
+function money(x){ return '$' + (Math.round(x*100)/100).toFixed(2); }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function hm(min){ return Math.floor(min/60) + 'h ' + (min%60) + 'm'; }
+function theme(){ return { text:cssVar('--muted'), ink:cssVar('--ink'), grid:cssVar('--grid'), card:cssVar('--card') }; }
+function empColor(name){
+  const i = DATA.employees.indexOf(name);
+  return i >= 0 ? PALETTE[i % PALETTE.length] : cssVar('--office');
+}
+
+function rowsFor(scope){ return scope === 'all' ? DATA.rows : DATA.rows.filter(r => r.mon === scope); }
+
+function aggByLoc(rows){
+  const m = {};
+  rows.forEach(r => {
+    const k = r.name;
+    (m[k] = m[k] || {name:r.name, sessions:0, kwh:0, minutes:0, cost:0, rate:r.rate, reimburse:r.reimburse, status:r.status});
+    m[k].sessions += r.sessions; m[k].kwh += r.kwh; m[k].minutes += r.minutes; m[k].cost += r.cost;
+  });
+  return Object.values(m).sort((a,b) => b.cost - a.cost);
+}
+function aggByEmp(rows){
+  const m = {};
+  rows.filter(r => r.reimburse).forEach(r => {
+    (m[r.name] = m[r.name] || {name:r.name, cost:0, kwh:0});
+    m[r.name].cost += r.cost; m[r.name].kwh += r.kwh;
+  });
+  return Object.values(m).sort((a,b) => b.cost - a.cost);
+}
+
+let monthlyChart = null, scopeCharts = [];
+
+function buildMonthly(){
+  if (monthlyChart) monthlyChart.destroy();
+  const c = theme();
+  const datasets = DATA.employees.map(name => ({
+    label: name, backgroundColor: empColor(name), borderRadius: 4, maxBarThickness: 60,
+    data: DATA.months.map(mo => r1(DATA.rows
+      .filter(r => r.mon === mo && r.reimburse && r.name === name)
+      .reduce((s,r) => s + r.cost, 0)))
+  }));
+  monthlyChart = new Chart(byId('chartMonthly'), {
+    type: 'bar',
+    data: { labels: DATA.months.map(m => DATA.monthLabels[m]), datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { stacked: true, grid: { display: false }, ticks: { color: c.text } },
+        y: { stacked: true, beginAtZero: true, grid: { color: c.grid },
+             ticks: { color: c.text, callback: v => '$' + v }, title: { display: true, text: 'Cost (USD)', color: c.text } }
+      },
+      plugins: {
+        legend: { position: 'top', align: 'end',
+          labels: { color: c.ink, usePointStyle: true, pointStyle: 'rectRounded', padding: 13 } },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + money(ctx.parsed.y) } }
+      }
+    }
+  });
+  buildMonthlyTable();
+}
+function buildMonthlyTable(){
+  let rows = '';
+  DATA.months.forEach(mo => {
+    const rs = DATA.rows.filter(r => r.mon === mo);
+    const kwh = rs.reduce((s,r) => s + r.kwh, 0);
+    const cost = rs.reduce((s,r) => s + r.cost, 0);
+    const reimb = rs.filter(r => r.reimburse).reduce((s,r) => s + r.cost, 0);
+    rows += '<tr><td>' + DATA.monthLabels[mo] + '</td><td class="num">' + r1(kwh)
+      + '</td><td class="num">' + money(cost) + '</td><td class="num">' + money(reimb) + '</td></tr>';
+  });
+  const ak = DATA.rows.reduce((s,r) => s + r.kwh, 0);
+  const ac = DATA.rows.reduce((s,r) => s + r.cost, 0);
+  const ar = DATA.rows.filter(r => r.reimburse).reduce((s,r) => s + r.cost, 0);
+  rows += '<tr class="total"><td>All time</td><td class="num">' + r1(ak) + '</td><td class="num">'
+    + money(ac) + '</td><td class="num">' + money(ar) + '</td></tr>';
+  byId('monthlyTable').innerHTML = rows || '<tr><td colspan="4">No data yet.</td></tr>';
+}
+
+function render(scope){
+  const rows = rowsFor(scope);
+  const label = scope === 'all' ? 'All time' : DATA.monthLabels[scope];
+  ['scopeLabel','scopeLabel2','scopeLabel3'].forEach(id => byId(id).textContent = label);
+
+  const byLoc = aggByLoc(rows);
+  const byEmp = aggByEmp(rows);
+  byId('kpiKwh').innerHTML = r1(rows.reduce((s,r) => s + r.kwh, 0)) + '<span class="kpi-unit">kWh</span>';
+  byId('kpiCost').textContent = money(rows.reduce((s,r) => s + r.cost, 0));
+  byId('kpiReimb').textContent = money(rows.filter(r => r.reimburse).reduce((s,r) => s + r.cost, 0));
+  byId('kpiSessions').textContent = rows.reduce((s,r) => s + r.sessions, 0);
+
+  scopeCharts.forEach(c => c.destroy());
+  scopeCharts = [];
+  const c = theme();
+
+  byId('empBox').style.height = Math.max(170, byEmp.length * 52 + 70) + 'px';
+  scopeCharts.push(new Chart(byId('chartEmp'), {
+    type: 'bar',
+    data: { labels: byEmp.map(e => e.name), datasets: [
+      { label: 'To reimburse', data: byEmp.map(e => Math.round(e.cost*100)/100),
+        backgroundColor: byEmp.map(e => empColor(e.name)), borderRadius: 5, maxBarThickness: 40 }
+    ]},
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { beginAtZero: true, grid: { color: c.grid },
+             ticks: { color: c.text, callback: v => '$' + v }, title: { display: true, text: 'Cost (USD)', color: c.text } },
+        y: { grid: { display: false }, ticks: { color: c.ink, font: { weight: '600' } } }
+      },
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: ctx => money(ctx.parsed.x) + ' (' + r1(byEmp[ctx.dataIndex].kwh) + ' kWh)' } } }
+    }
+  }));
+
+  scopeCharts.push(new Chart(byId('chartKwh'), {
+    type: 'bar',
+    data: { labels: byLoc.map(l => l.name), datasets: [
+      { label: 'kWh', data: byLoc.map(l => r1(l.kwh)),
+        backgroundColor: byLoc.map(l => l.reimburse ? empColor(l.name) : cssVar('--office')),
+        borderRadius: 5, maxBarThickness: 46 }
+    ]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { grid: { display: false }, ticks: { color: c.text } },
+        y: { beginAtZero: true, grid: { color: c.grid }, ticks: { color: c.text },
+             title: { display: true, text: 'kWh', color: c.text } }
+      },
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: ctx => r1(ctx.parsed.y) + ' kWh' } } }
+    }
+  }));
+
+  scopeCharts.push(new Chart(byId('chartShare'), {
+    type: 'doughnut',
+    data: { labels: byLoc.map(l => l.name), datasets: [
+      { data: byLoc.map(l => Math.round(l.cost*100)/100),
+        backgroundColor: byLoc.map(l => l.reimburse ? empColor(l.name) : cssVar('--office')),
+        borderColor: c.card, borderWidth: 3 }
+    ]},
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '58%',
+      plugins: {
+        legend: { position: 'right', labels: { color: c.ink, usePointStyle: true, pointStyle: 'circle', padding: 12 } },
+        tooltip: { callbacks: { label: ctx => {
+          const tot = ctx.dataset.data.reduce((a,b) => a + b, 0) || 1;
+          return ctx.label + ': ' + money(ctx.parsed) + ' (' + Math.round(ctx.parsed/tot*100) + '%)';
+        } } }
+      }
+    }
+  }));
+
+  const tb = byId('detailBody');
+  if (!byLoc.length) { tb.innerHTML = '<tr><td colspan="8">No data.</td></tr>'; return; }
+  let body = byLoc.map(l =>
+    '<tr><td>' + esc(l.name) + '</td><td class="num">' + l.sessions
+    + '</td><td class="num">' + hm(l.minutes) + '</td><td data-sort="' + l.kwh + '" class="num">' + r1(l.kwh)
+    + '</td><td class="num">$' + l.rate.toFixed(2) + '</td><td data-sort="' + l.cost + '" class="num">' + money(l.cost)
+    + '</td><td>' + (l.reimburse ? '<span class="pill pill-yes">Reimburse</span>' : '<span class="pill pill-no">' + esc(l.status) + '</span>')
+    + '</td></tr>').join('');
+  const tk = byLoc.reduce((s,l) => s + l.kwh, 0);
+  const tc = byLoc.reduce((s,l) => s + l.cost, 0);
+  const tr = byLoc.filter(l => l.reimburse).reduce((s,l) => s + l.cost, 0);
+  body += '<tr class="total"><td>Total</td><td class="num">'
+    + byLoc.reduce((s,l) => s + l.sessions, 0) + '</td><td></td><td class="num">' + r1(tk)
+    + '</td><td></td><td class="num">' + money(tc) + '</td><td>' + money(tr) + ' to reimburse</td></tr>';
+  tb.innerHTML = body;
+}
+
+function toggleTheme(){
+  const cur = document.documentElement.getAttribute('data-theme');
+  document.documentElement.setAttribute('data-theme', cur === 'dark' ? 'light' : 'dark');
+  buildMonthly();
+  render(byId('monthSelect').value);
+}
+
+document.querySelectorAll('#detail th').forEach(function (th, idx) {
+  var asc = true;
+  th.addEventListener('click', function () {
+    var tb = byId('detailBody');
+    var rows = Array.prototype.slice.call(tb.querySelectorAll('tr')).filter(r => !r.classList.contains('total'));
+    var totalRow = tb.querySelector('tr.total');
+    rows.sort(function (a, b) {
+      var x = a.children[idx], y = b.children[idx];
+      var xv = x.dataset.sort !== undefined ? parseFloat(x.dataset.sort) : x.textContent.trim().toLowerCase();
+      var yv = y.dataset.sort !== undefined ? parseFloat(y.dataset.sort) : y.textContent.trim().toLowerCase();
+      if (xv < yv) return asc ? -1 : 1;
+      if (xv > yv) return asc ? 1 : -1;
+      return 0;
+    });
+    asc = !asc;
+    rows.forEach(function (r) { tb.appendChild(r); });
+    if (totalRow) tb.appendChild(totalRow);
+  });
+});
+
+(function () {
+  const sel = byId('monthSelect');
+  let opts = '<option value="all">All time</option>';
+  DATA.months.forEach(m => { opts += '<option value="' + m + '">' + DATA.monthLabels[m] + '</option>'; });
+  sel.innerHTML = opts;
+  const def = DATA.months.length ? DATA.months[DATA.months.length - 1] : 'all';
+  sel.value = def;
+  sel.addEventListener('change', () => render(sel.value));
+  buildMonthly();
+  render(def);
+})();
+</script>
+</body>
+</html>
