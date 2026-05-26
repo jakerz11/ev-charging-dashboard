@@ -74,7 +74,7 @@
   <header>
     <div>
       <h1>EV Charging — Cost &amp; Reimbursement</h1>
-      <p class="sub">May 2026 &nbsp;·&nbsp; kWh charged and estimated electricity cost by location</p>
+      <p class="sub">Through April 2026 &nbsp;·&nbsp; kWh charged and estimated electricity cost by location</p>
     </div>
     <button class="toggle" onclick="toggleTheme()">◐ Theme</button>
   </header>
@@ -144,7 +144,7 @@
   </div>
 
   <footer>
-    Generated May 26, 2026 01:11 PM from 1 monthly report.<br>
+    Generated May 26, 2026 01:25 PM from lifetime base.<br>
     Cost is an estimate: kWh × electricity rate (default $0.15/kWh,
     editable per location in the build script). Office charging is shown in
     totals but excluded from reimbursement. Each monthly report's period is taken
@@ -152,7 +152,7 @@
   </footer>
 </div>
 <script>
-const DATA = {"rows": [{"name": "Public \u2014 Kimball Junction", "sessions": 2, "kwh": 97.19, "minutes": 42, "rate": 0.15, "cost": 14.58, "reimburse": false, "status": "Receipt (public)", "mon": "2026-05"}, {"name": "Public \u2014 Park City", "sessions": 2, "kwh": 136.27, "minutes": 64, "rate": 0.15, "cost": 20.44, "reimburse": false, "status": "Receipt (public)", "mon": "2026-05"}, {"name": "Glenn", "sessions": 4, "kwh": 130.97, "minutes": 1273, "rate": 0.15, "cost": 19.65, "reimburse": true, "status": "Reimburse", "mon": "2026-05"}, {"name": "Office (company-paid)", "sessions": 17, "kwh": 627.21, "minutes": 1364, "rate": 0.15, "cost": 94.08, "reimburse": false, "status": "Company-paid", "mon": "2026-05"}, {"name": "Todd H.", "sessions": 22, "kwh": 399.53, "minutes": 114, "rate": 0.15, "cost": 59.93, "reimburse": true, "status": "Reimburse", "mon": "2026-05"}], "employees": ["Todd H.", "Glenn"], "months": ["2026-05"], "monthLabels": {"2026-05": "May 2026"}};
+const DATA = {"rows": [{"name": "Todd H.", "sessions": 11, "kwh": 182.91, "minutes": 599, "rate": 0.15, "cost": 27.44, "reimburse": true, "status": "Reimburse", "mon": "lifetime"}, {"name": "Office (company-paid)", "sessions": 5, "kwh": 137.88, "minutes": 996, "rate": 0.15, "cost": 20.68, "reimburse": false, "status": "Company-paid", "mon": "lifetime"}], "employees": ["Todd H."], "months": ["lifetime"], "monthLabels": {"lifetime": "Through April 2026"}};
 const PALETTE = ['#2563eb','#f59e0b','#10b981','#ef4444','#8b5cf6','#ec4899',
                  '#14b8a6','#f97316','#6366f1','#84cc16','#0ea5e9','#d946ef'];
 
